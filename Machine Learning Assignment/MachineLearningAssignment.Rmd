@@ -1,0 +1,141 @@
+---
+title: "Machine Learning Assignment"
+author: "JM"
+date: "August 6, 2017"
+output: html_document
+---
+
+#Overview
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. 
+
+#Objective
+The goal is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. 
+
+#Load and Prep the Data
+
+
+```{r setup, include=FALSE}
+
+#Load Libraries
+library(caret)
+library(parallel)
+library(doParallel)
+
+
+#Set Working Direcotry
+setwd("C:/Users/Marin Family/Documents/R/Machine Learning Assignment")
+
+#Set Seed
+set.seed(1234)
+
+#Load Downloaded Train and Test Files from Working Directory
+
+training <- read.csv(file="pml-training.csv", na.strings=c("", "NA", "NULL"))
+testing <- read.csv(file="pml-testing.csv", na.strings=c("", "NA", "NULL"))
+
+
+#Remove NA columns and indentifier columns
+
+training <- training[, colSums(is.na(training))==0]
+
+dim(training)
+
+#After review, the first 7 columns as they do not seem relevant to the outcome. 
+
+training <- training[,-c(1:7)]
+testing <- testing[, -c(1:7)]
+
+dim(training)
+dim(testing)
+
+#Create my test set 
+inTrain <- createDataPartition(y=training$classe, p=.7, list = FALSE)
+
+
+trainset <- training[inTrain,]
+
+
+#Create My Test Data
+mytestset <- training[-inTrain,]
+
+
+dim(trainset)
+dim(mytestset)
+
+
+#Load Coursera Test Data
+testset <- read.csv("pml-testing.csv")
+
+
+
+dim(testset)
+
+
+
+
+```
+
+
+
+## Random Forests Method
+
+Will apply the Random Forest Method
+
+```{r}
+
+# Was getting performance and memory loss issues with Random Forests and turned to Discussion Forum:
+#Which brought me to this helpful tip and trick of running more cores
+# https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md
+
+
+cluster <- makeCluster(detectCores() - 1) 
+registerDoParallel(cluster)
+
+
+
+fitControl <- trainControl(method = "cv",
+                           number = 3,
+                           allowParallel = TRUE)
+
+
+
+
+modelfit <- train(classe ~., data = trainset, method = "rf", trControl = fitControl)
+
+
+modelfit
+
+
+
+```
+
+Accuracy for mtry 27 is the highest with accuracy of .9899 which is very accurate.  Going to do another model for good measure. 
+
+
+## Boosting with Trees
+
+
+```{r}
+modFit <- train(classe ~., method = "gbm", data=trainset, verbose = FALSE)
+
+modFit
+
+```
+
+With n.trees of 150, the accuracy is .956 which is pretty accurate, but not as accurate as the Random Forest model. 
+
+
+# Conclusion
+
+Between the two models, Random Forsest seems to be the most accurate with .989 accuracy.  I will now run the test set on the random forest model and print the quiz results.   
+
+```{r}
+
+
+pred <- predict(modelfit, newdata = testset)
+
+pred
+
+
+```
